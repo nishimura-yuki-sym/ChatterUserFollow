@@ -1,0 +1,6 @@
+<apex:page standardController="User"  title="ChatterFollow" docType="html-5.0" standardStylesheets="false"  >
+    <c:importvisualstrap />
+    <c:visualstrapblock >
+
+    </c:visualstrapblock>
+</apex:page>
