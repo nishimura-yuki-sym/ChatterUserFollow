@@ -17,7 +17,6 @@
 
       var currentPageEle = $j("#currentPage");
       var pageTextBoxFunc = function(value){
-        console.log(isNaN(value));
           if(isNaN(value) || value.indexOf('-') != -1){
               value = 1;
           }
