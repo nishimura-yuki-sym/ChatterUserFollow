@@ -1,6 +1,259 @@
-<apex:page standardController="User"  title="ChatterFollow" docType="html-5.0" standardStylesheets="false"  >
-    <c:importvisualstrap />
-    <c:visualstrapblock >
+<apex:page standardController="User" extensions="ChatterFollowExtensionController" title="ChatterFollow" docType="html-5.0" showHeader="true" sidebar="true" action="{!refreshFollowCount}">
 
-    </c:visualstrapblock>
+  <!-- ここからresource領域 -->
+  <apex:stylesheet value="{!URLFOR($Resource.ChatterFollowPage, 'style.css')}"/>
+
+  <apex:includeScript value="{!URLFOR($Resource.ChatterFollowPage, 'jQuery1_10.js')}"/>
+  <apex:includeScript value="{!URLFOR($Resource.ChatterFollowPage, 'jsrender.min.js')}"/>  
+  
+  <!-- ここからjs領域 -->
+  <script type = 'text/javascript'>
+    //<![CDATA[
+    $(function() {
+
+      var $j = jQuery.noConflict();
+    
+      setup();
+
+      var currentPageEle = $j("#currentPage");
+      var pageTextBoxFunc = function(value){
+        console.log(isNaN(value));
+          if(isNaN(value) || value.indexOf('-') != -1){
+              value = 1;
+          }
+          updateUserList(parseInt(value));
+      };
+      currentPageEle.blur(function(){
+          var value = $j(this).val();
+          if($j("#currentPageHidden").val() != value){
+              pageTextBoxFunc(value);
+          }
+      });
+      currentPageEle.keypress(function(e){
+          if(e.keyCode == 13){
+              var value = $j(this).val();
+              if($j("#currentPageHidden").val() != value){
+                  pageTextBoxFunc(value);
+              }
+          }
+      });
+      //前のページ
+      $j("#prevpage_link").click(function(){
+          if(!$j(this).hasClass("clickableText")){
+              return false;
+          }
+          var value = parseInt($j("#currentPageHidden").val());
+          updateUserList(value - 1);
+      });
+      //次のページ
+      $j("#nextpage_link").click(function(){
+          if(!$j(this).hasClass("clickableText")){
+              return false;
+          }
+          var value = parseInt($j("#currentPageHidden").val());
+          updateUserList(value + 1);
+      });
+
+      //キャンセルボタン
+      $j("#cancel_btn").click(function(){
+        location.href = "/{!followerUser.Id}?noredirect=1"
+      });
+
+      //選択フォローボタン
+     $j("#selectfollow_btn").click(function(){
+
+        if($j(this).prop("disable")){
+          return false;
+        }
+
+        var userListEle = $j("user_table ");
+        var userIds = [];
+        $j.each( $j("#user_table tbody tr") , function(){
+            var jqObj = $j(this);
+            if(!jqObj.find("input:checkbox").prop("checked")){
+              return true;
+            }
+            userIds.push( jqObj.find("._id_").text() );
+        });
+        
+        if(userIds.length <= 0){
+          return false;
+        }
+
+        startload();
+        {!$RemoteAction.ChatterFollowExtensionController.followUser}(
+            "{!followerUser.Id}"  , userIds , 
+            function(result, e){
+                endload();
+                if(e.status){
+                  location.href = "/apex/chatterFollow?id={!followerUser.Id}";
+                }else{
+                  //エラー処理
+                  $j("#message_error").text("フォロー実行時にエラー発生");
+                }
+            }
+        ); 
+      });
+
+      //すべてフォローボタン
+     $j("#allfollow_btn").click(function(){
+
+        if($j(this).prop("disable")){
+          return false;
+        }
+
+        startload();
+        {!$RemoteAction.ChatterFollowExtensionController.followAllUser}(
+            "{!followerUser.Id}"  ,
+            function(result, e){
+                endload();
+                if(e.status){
+                  location.href = "/apex/chatterFollow?id={!followerUser.Id}";
+                }else{
+                  //エラー処理
+                  $j("#message_error").text("フォロー実行時にエラー発生");
+                }
+            }
+        ); 
+      });
+
+      function layoutUserList(userList , pageNum , pageSize){
+
+        var appendEle = $j("#user_table tbody");
+        appendEle.children().remove();
+        if(userList.length > 0){
+          appendEle.append( $j("#user_tr_template_list").render({"userlist":userList}) );
+        }else{
+          //ボタンを非活性にする
+          $j("#selectfollow_btn").prop("disabled" , true);
+          $j("#allfollow_btn").prop("disabled" , true);
+          pageNum = 0;
+          pageSize = 0;
+        }
+      
+        $j("#currentPageHidden").val(pageNum);
+        $j("#currentPage").val(pageNum);
+        $j("#maxPage").text(pageSize);
+        
+        if(pageNum > 1){
+            $j("#prevpage_link").addClass("clickableText");
+            $j("#prevpage_link").removeClass("disableText");
+        }else{
+            $j("#prevpage_link").removeClass("clickableText");
+            $j("#prevpage_link").addClass("disableText");
+        }
+        if(pageNum < pageSize){
+            $j("#nextpage_link").addClass("clickableText");
+            $j("#nextpage_link").removeClass("disableText");
+        }else{
+            $j("#nextpage_link").removeClass("clickableText");
+            $j("#nextpage_link").addClass("disableText");
+        }
+      }
+
+      function updateUserList(pagePoint){
+          startload();
+          {!$RemoteAction.ChatterFollowExtensionController.getUserList}(
+              "{!followerUser.Id}" , pagePoint ,
+              function(result, e){
+                  endload();
+                  if(e.status){
+                    layoutUserList(result.list , result.pagenum , result.pagesize);
+                  }else{
+                    //エラー処理
+                    $j("#message_error").text("データ取得時にエラー発生");
+                  }
+              }
+          ); 
+      }
+
+      function startload(){
+        $j("#loading").show();
+      }
+
+      function endload(){
+        $j("#loading").hide();
+      }
+
+      function setup(){
+        updateUserList(1);
+      }
+
+    });
+    //]]>
+  </script>
+
+  <!-- ここからhtml領域 -->
+  <br/>
+  {!HTMLENCODE(followerUser.Name)} がフォローするユーザを追加します。<br/>
+  現在 <strong>{!allUserNum}</strong> ユーザ中 <strong>{!followUserNum}</strong> ユーザをフォロー中
+  <br/><br/>
+
+  <p id="message_error" style="color:red;"></p>
+  <br/>
+
+  <table>
+      <thead></thead>
+      <tbody> 
+          <tr>
+              <td><button id="cancel_btn" type="button" class="btn btn-default">キャンセル</button></td>
+              <td><button id="selectfollow_btn" type="button" class="btn btn-success">選択ユーザをフォロー</button></td>
+              <td><button id="allfollow_btn" type="button" class="btn btn-danger">すべてのユーザをフォロー</button></td>
+          </tr>
+          <tr><td></td></tr>
+          <tr>
+              <td></td>
+              <td>
+                  <span id="prevpage_link">◀&nbsp;</span>
+                  <input type="text" id="currentPage" maxlength="3" size="2" style="text-align:center;"/>
+                  <div id="currentPageHidden" style="display:none;"/>
+                  &nbsp;&nbsp;/&nbsp;&nbsp;
+                  <span id="maxPage"></span>
+                  <span id="nextpage_link">&nbsp;▶</span>
+              </td>
+          </tr>
+      </tbody>
+  </table>
+  <table id="user_table" class="original_ta" style="width:100%">        
+    <thead>
+      <tr>
+        <th style="width:20px; text-align:center;"></th>
+        <th style="width:30px; text-align:center;">アイコン</th>
+        <th>ユーザ名</th>
+        <th>メールアドレス</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!--
+      <tr>
+        <td><input type="checkbox" /></td>
+        <td><img src="http://hogehoge" width="25" height="25"/></td>                      
+        <td>nishimura.yuki.dev11@synergy101.jp</td>
+        <td>nishimura.yuki@synergy101.jp</td>
+        <td style="display:none;" class="_id_">userid</td>
+      </tr>
+      -->
+    </tbody>
+  </table>
+    
+  <div id="loading" style="display:none;">
+    <div id="loadingmask"></div>
+    <div id="loadingimage"><img src="/img/loading32.gif"/></div>
+  </div>
+
+  <!-- テンプレート郡 -->
+  <script id="user_tr_template_list" type="text/x-jsrender">
+    {{for userlist tmpl="#user_tr_template"/}}
+  </script>
+
+  <script id="user_tr_template" type="text/x-jsrender">
+    <tr>
+      <td><input type="checkbox"/></td>
+      <td><img src="{{:SmallPhotoUrl}}" width="25" height="25"/></td>                      
+      <td>{{:Username}}</td>
+      <td>{{:Email}}</td>
+      <td style="display:none;" class="_id_">{{:Id}}</td>
+    </tr>
+  </script>
+
 </apex:page>
