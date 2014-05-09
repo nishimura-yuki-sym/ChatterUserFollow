@@ -42,7 +42,7 @@ public class ChatterFollowExtensionCtrlTest{
 		//フォロー情報が存在する場合は予め削除しておく
 		List<User> u = [select Id  from User 
             where Id != :UserInfo.getUserId() and IsActive = true and 
-                Profile.UserLicense.LicenseDefinitionKey != 'CSN_External_User'
+                Profile.UserLicense.LicenseDefinitionKey  in ('SFDC' , 'AUL' , 'CSN_User')
             order by LastLoginDate desc
             limit 1];
         if(u.size() > 0){
@@ -72,7 +72,7 @@ public class ChatterFollowExtensionCtrlTest{
 
 		List<User> u = [select Id  from User 
                 where Id != :UserInfo.getUserId() and IsActive = true and 
-                    Profile.UserLicense.LicenseDefinitionKey != 'CSN_External_User'
+                    Profile.UserLicense.LicenseDefinitionKey  in ('SFDC' , 'AUL' , 'CSN_User')
                 order by LastLoginDate desc
                 limit 1];
 
@@ -116,9 +116,19 @@ public class ChatterFollowExtensionCtrlTest{
 
 		Integer result;
 
+		ChatterUserProfile__c setting = ChatterUserProfile__c.getInstance();
+        if(setting.Name != null){
+        	delete setting;
+        	setting = ChatterUserProfile__c.getInstance();
+        }
+        setting.licensedefinition1__c = 'hogehoge';
+		setting.licensedefinition2__c = 'piyopiyo';
+		setting.licensedefinition3__c = 'hogehoge';
+		insert setting;
+
 		List<User> u = [select Id  from User 
                 where Id != :UserInfo.getUserId() and IsActive = true and 
-                    Profile.UserLicense.LicenseDefinitionKey != 'CSN_External_User'
+                    Profile.UserLicense.LicenseDefinitionKey in ('SFDC' , 'AUL' , 'CSN_User')
                 order by LastLoginDate desc
                 limit 1];
 

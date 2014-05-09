@@ -99,7 +99,7 @@ global with sharing class ChatterFollowExtensionController {
         //外部ユーザ以外を取得
         return [select Id , Username , SmallPhotoUrl,Email from User 
                 where Id != :followerId and IsActive = true and 
-                    Profile.UserLicense.LicenseDefinitionKey != 'CSN_External_User'
+                    Profile.UserLicense.LicenseDefinitionKey in :getLicenseDefinition()
                 order by LastLoginDate desc
                 limit :(USER_SELECT_LIMIT + 1)];
     }
@@ -160,6 +160,32 @@ global with sharing class ChatterFollowExtensionController {
     
         return insertEntry.size();
         
+    }
+
+    private static List<String> getLicenseDefinition(){
+        
+        List<String> result = new List<String>();
+
+        //フォロー検索対象ユーザライセンスの固定値
+        Set<String> lisenceSet = new Set<String>{
+            'SFDC' , 'CSN_User' , 'AUL'
+        };
+
+        ChatterUserProfile__c setting = ChatterUserProfile__c.getInstance();
+        if(setting.Name != null){
+            for(Integer i=0;i<10;i++){
+                String tmp = String.valueOf(setting.get('licensedefinition' +(i+1)+'__c'));
+                if(tmp != null && !lisenceSet.contains(tmp)){
+                    lisenceSet.add(tmp);
+                }
+            }
+        }
+        for( String definition : lisenceSet){
+            result.add(definition);
+        }
+
+        return result;
+
     }
     
 
