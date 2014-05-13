@@ -100,20 +100,7 @@
         if($j(this).prop("disable")){
           return false;
         }
-
-        startload();
-        {!$RemoteAction.ChatterFollowExtensionController.followAllUser}(
-            "{!followerUser.Id}"  ,
-            function(result, e){
-                endload();
-                if(e.status){
-                  location.href = "/apex/chatterFollow?id={!followerUser.Id}";
-                }else{
-                  //エラー処理
-                  $j("#message_error").text("フォロー実行時にエラー発生");
-                }
-            }
-        ); 
+        followAllUser();
       });
 
       function layoutUserList(userList , pageNum , pageSize){
@@ -164,6 +151,36 @@
                   }
               }
           ); 
+      }
+
+      function followAllUser(){
+
+        startload();
+        var actionFunc = function( callback ){
+          {!$RemoteAction.ChatterFollowExtensionController.followAllUser}(
+              "{!followerUser.Id}"  ,
+              function(result, e){
+                console.log(e);
+                callback( e.status , (e.result != null && e.result < {!INSERT_LIMIT}) );    
+              }
+          );
+        }
+
+        var callbackFunc = function( success , finish ){
+          if(success){
+            if(finish){
+              endload();
+              location.href = "/apex/chatterFollow?id={!followerUser.Id}";
+            }else{
+              actionFunc(callbackFunc);
+            }
+          }else{
+            endload();
+            //エラー処理
+            $j("#message_error").text("フォロー実行時にエラー発生");
+          }
+        }
+        actionFunc( callbackFunc );
       }
 
       function startload(){

@@ -1,8 +1,11 @@
 global with sharing class ChatterFollowExtensionController {
 
     //本来は定数にしたいがテスト用に開放
-    @TestVisible private static Integer USER_SELECT_LIMIT = 5000;
-    @TestVisible private static Integer ITEMS_PER_PAGE    = 50;    
+    @TestVisible private static Integer USER_SELECT_LIMIT  = 5000;
+    @TestVisible private static Integer ITEMS_PER_PAGE     = 50;    
+    @TestVisible private static Integer ENTRY_INSERT_LIMIT = 200;    
+
+    public Integer INSERT_LIMIT { get{return ENTRY_INSERT_LIMIT;} }
 
     public User followerUser { get; set; }
     public Integer allUserNum{ get; set; }
@@ -131,7 +134,7 @@ global with sharing class ChatterFollowExtensionController {
     }
 
     private static Integer follow( Id followerId  , List<Id> userIds){
-    
+
         //ParentId = フォローされているユーザ
         //SubscriberId = フォローしているユーザ
         
@@ -150,7 +153,10 @@ global with sharing class ChatterFollowExtensionController {
                 EntitySubscription entry = new EntitySubscription();
                 entry.ParentId = u.Id;
                 entry.SubscriberId = followerId;
-                insertEntry.add(entry);    
+                insertEntry.add(entry);
+                if(insertEntry.size() >= ENTRY_INSERT_LIMIT){
+                    break;
+                }
             }
         }                                                                    
         
@@ -159,7 +165,7 @@ global with sharing class ChatterFollowExtensionController {
         }
     
         return insertEntry.size();
-        
+       
     }
 
     private static List<String> getLicenseDefinition(){

@@ -60,7 +60,7 @@ public class ChatterFollowExtensionCtrlTest{
 
 		system.assertEquals( 1 , ((List<User>)resultMap.get('list')).size() );
 		system.assertEquals( 1 , ((Integer)resultMap.get('pagenum')));
-		system.assertEquals( 1 , ((Integer)resultMap.get('pagesize')));
+		system.assert( 1 <= ((Integer)resultMap.get('pagesize')));
 
 		Test.stopTest();
 
