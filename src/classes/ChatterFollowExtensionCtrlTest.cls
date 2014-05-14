@@ -1,6 +1,36 @@
 @isTest(seeAllData=true)
 public class ChatterFollowExtensionCtrlTest{
-	
+
+	public testmethod static void test_constoractor(){
+
+		ChatterUserFollowSetting__c setting = ChatterUserFollowSetting__c.getInstance();
+        if(setting.Id != null){
+        	delete setting;
+        }	
+
+		ApexPages.StandardController stdCtrl = null;
+		ChatterFollowExtensionController ctrl = null;
+
+		User u = new User();
+		u.Id = UserInfo.getUserId();
+		u.Username = UserInfo.getUserName();
+
+		//カスタム設定がない場合
+        stdCtrl = new ApexPages.StandardController(u);
+        ctrl = new ChatterFollowExtensionController( stdCtrl );
+        System.assertEquals(5000 , ctrl.insertLimit);
+
+		//カスタム設定に数値が設定済み
+		setting = ChatterUserFollowSetting__c.getInstance();
+        setting.BatchSize__c = 55;
+        insert setting;
+
+        stdCtrl = new ApexPages.StandardController(u);
+        ctrl = new ChatterFollowExtensionController( stdCtrl );
+        System.assertEquals(55 , ctrl.insertLimit);
+
+	}
+
 	public testmethod static void test_refreshFollowCount(){
 
 		ApexPages.StandardController stdCtrl = null;
@@ -13,7 +43,7 @@ public class ChatterFollowExtensionCtrlTest{
 
         stdCtrl = new ApexPages.StandardController(u);
         ctrl = new ChatterFollowExtensionController( stdCtrl );
-        
+		
 		Test.startTest();
 
         //通常パターン
@@ -90,7 +120,7 @@ public class ChatterFollowExtensionCtrlTest{
         Test.startTest();
 
         //フォローされることを確認
-		result = ChatterFollowExtensionController.followUser( UserInfo.getUserId() , ids );
+		result = ChatterFollowExtensionController.followUser( UserInfo.getUserId() , ids , 10);
 		if(ids.size() > 0){
 			system.assertEquals( 1 , result );			
 			system.assertEquals( 1 , [ SELECT Id, ParentId FROM EntitySubscription 
@@ -102,7 +132,7 @@ public class ChatterFollowExtensionCtrlTest{
 		}
 
 		//フォロー済みの場合は0件であること
-		result = ChatterFollowExtensionController.followUser( UserInfo.getUserId() , ids );
+		result = ChatterFollowExtensionController.followUser( UserInfo.getUserId() , ids , 10);
 		system.assertEquals( 1 , [ SELECT Id, ParentId FROM EntitySubscription 
 										WHERE SubscriberId = :UserInfo.getUserId() and ParentId = :ids[0] 
         						].size() );
@@ -116,11 +146,12 @@ public class ChatterFollowExtensionCtrlTest{
 
 		Integer result;
 
-		ChatterUserProfile__c setting = ChatterUserProfile__c.getInstance();
-        if(setting.Name != null){
+		ChatterUserFollowSetting__c setting = ChatterUserFollowSetting__c.getInstance();
+        if(setting.Id != null){
         	delete setting;
-        	setting = ChatterUserProfile__c.getInstance();
+        	setting = ChatterUserFollowSetting__c.getInstance();
         }
+        setting.BatchSize__c = 30;
         setting.licensedefinition1__c = 'hogehoge';
 		setting.licensedefinition2__c = 'piyopiyo';
 		setting.licensedefinition3__c = 'hogehoge';
@@ -147,7 +178,7 @@ public class ChatterFollowExtensionCtrlTest{
 
         //フォローされることを確認
         ChatterFollowExtensionController.USER_SELECT_LIMIT = 2;
-		result = ChatterFollowExtensionController.followAllUser( UserInfo.getUserId() );
+		result = ChatterFollowExtensionController.followAllUser( UserInfo.getUserId() , 2);
 		if(ids.size() > 0){
 			system.assert( result >= 1 );			
 			system.assertEquals( 1 , [ SELECT Id, ParentId FROM EntitySubscription 
@@ -159,7 +190,7 @@ public class ChatterFollowExtensionCtrlTest{
 		}
 
 		//フォロー済みの場合のパターン
-		result = ChatterFollowExtensionController.followUser( UserInfo.getUserId() , ids );
+		result = ChatterFollowExtensionController.followUser( UserInfo.getUserId() , ids , 2);
 		system.assertEquals( 1 , [ SELECT Id, ParentId FROM EntitySubscription 
 										WHERE SubscriberId = :UserInfo.getUserId() and ParentId = :ids[0] 
         						].size() );

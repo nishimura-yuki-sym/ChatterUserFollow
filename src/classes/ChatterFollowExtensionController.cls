@@ -3,9 +3,10 @@ global with sharing class ChatterFollowExtensionController {
     //本来は定数にしたいがテスト用に開放
     @TestVisible private static Integer USER_SELECT_LIMIT  = 5000;
     @TestVisible private static Integer ITEMS_PER_PAGE     = 50;    
-    @TestVisible private static Integer ENTRY_INSERT_LIMIT = 200;    
+    @TestVisible private static Integer DEFAULT_ENTRY_INSERT_LIMIT = 5000;    
 
-    public Integer INSERT_LIMIT { get{return ENTRY_INSERT_LIMIT;} }
+    private Integer ENTRY_INSERT_LIMIT = DEFAULT_ENTRY_INSERT_LIMIT;
+    public Integer insertLimit { get{return ENTRY_INSERT_LIMIT;} }
 
     public User followerUser { get; set; }
     public Integer allUserNum{ get; set; }
@@ -18,6 +19,9 @@ global with sharing class ChatterFollowExtensionController {
             stdController.addFields( new String[]{ 'Id' , 'Name'});
         }
         followerUser = (User)stdController.getRecord();
+
+        ENTRY_INSERT_LIMIT = getInsertSize();
+
     }
 
     public Pagereference refreshFollowCount(){
@@ -80,18 +84,20 @@ global with sharing class ChatterFollowExtensionController {
 
     /**
      * 指定IDのユーザをまとめてフォロー
+     * return insert数
      */
     @RemoteAction
-    global static Integer followUser( Id followerId , List<Id> userIds){
-        return follow(followerId , userIds); 
+    global static Integer followUser( Id followerId , List<Id> userIds , Integer batchSize){
+        return follow(followerId , userIds , batchSize); 
     }
 
     /**
      * フォローしていないユーザをまとめてフォロー
+     * return insert数
      */
     @RemoteAction
-    global static Integer followAllUser( Id followerId ){
-        return follow(followerId , null); 
+    global static Integer followAllUser( Id followerId , Integer batchSize){
+        return follow(followerId , null , batchSize); 
     }
 
     private static boolean verifyUser(Id followerId){
@@ -133,11 +139,14 @@ global with sharing class ChatterFollowExtensionController {
         return resultList;
     }
 
-    private static Integer follow( Id followerId  , List<Id> userIds){
+    private static Integer follow( Id followerId  , List<Id> userIds , Integer batchSize){
 
         //ParentId = フォローされているユーザ
         //SubscriberId = フォローしているユーザ
-        
+        if(batchSize == null || batchSize <= 0){
+            batchSize = DEFAULT_ENTRY_INSERT_LIMIT;
+        }
+
         List<User> users = getNotFollowUserList( followerId );
         Set<Id> ids = null;
         if(userIds != null){
@@ -154,7 +163,7 @@ global with sharing class ChatterFollowExtensionController {
                 entry.ParentId = u.Id;
                 entry.SubscriberId = followerId;
                 insertEntry.add(entry);
-                if(insertEntry.size() >= ENTRY_INSERT_LIMIT){
+                if(insertEntry.size() >= batchSize){
                     break;
                 }
             }
@@ -177,7 +186,8 @@ global with sharing class ChatterFollowExtensionController {
             'SFDC' , 'CSN_User' , 'AUL'
         };
 
-        ChatterUserProfile__c setting = ChatterUserProfile__c.getInstance();
+        
+        ChatterUserFollowSetting__c setting = ChatterUserFollowSetting__c.getInstance();
         if(setting.Name != null){
             for(Integer i=0;i<10;i++){
                 String tmp = String.valueOf(setting.get('licensedefinition' +(i+1)+'__c'));
@@ -193,6 +203,13 @@ global with sharing class ChatterFollowExtensionController {
         return result;
 
     }
-    
+
+    private static Integer getInsertSize(){
+        ChatterUserFollowSetting__c setting = ChatterUserFollowSetting__c.getInstance();
+        if(setting.BatchSize__c != null && setting.BatchSize__c >= 1){
+            return Integer.valueOf(setting.BatchSize__c);
+        }
+        return DEFAULT_ENTRY_INSERT_LIMIT;
+    }
 
 }
